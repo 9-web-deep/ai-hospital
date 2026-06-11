@@ -1,0 +1,33 @@
+# Python compilation files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# IDE / Editor configurations
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs and databases
+*.log
+*.db
+*.sqlite3
+
+# Git version control
+.git/
+.gitignore
+
+# Sensitive information
+.env
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

@@ -1,0 +1,77 @@
+services:
+  postgresql:
+    image: postgres:16
+    container_name: no_kafka_postgresql
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app123456
+      POSTGRES_DB: appdb
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hospital-backend
+
+  redis:
+    image: redis:7
+    container_name: no_kafka_redis
+    restart: unless-stopped
+    ports:
+      - "16379:6379"
+    volumes:
+      - ./redis_data:/data
+    networks:
+      - hospital-backend
+
+  no_kafka:
+    build:
+      context: .
+      args:
+        APK_MIRROR: https://mirrors.aliyun.com/alpine
+        # Optional: PyPI mirror for uv/pip (comment out if not needed)
+        UV_DEFAULT_INDEX: https://pypi.tuna.tsinghua.edu.cn/simple
+    container_name: no_kafka_all_in_one
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app:app123456@postgresql:5432/appdb
+      REDIS_URL: redis://redis:6379/0
+      # Dify (按需覆盖)
+      DIFY_SERVER: ${DIFY_SERVER:-}
+      DIFY_USER: ${DIFY_USER:-no_kafka}
+      DIFY_CHATFLOW_KEY: ${DIFY_CHATFLOW_KEY:-}
+      DIFY_CT_WORKFLOW_KEY: ${DIFY_CT_WORKFLOW_KEY:-}
+      # POC: 提高队列容量（按需）
+      EVENT_QUEUE_MAXSIZE: ${EVENT_QUEUE_MAXSIZE:-10000}
+    ports:
+      - "18000:8000"
+    networks:
+      - hospital-backend
+
+  nginx:
+    image: nginx:1.27
+    container_name: no_kafka_nginx
+    restart: unless-stopped
+    depends_on:
+      - no_kafka
+    ports:
+      - "18082:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - hospital-backend
+
+networks:
+  hospital-backend:
